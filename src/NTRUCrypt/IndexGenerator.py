@@ -99,7 +99,7 @@ class IGF:
         self.state = state                                              # h
         return i % state.N                                              # i
 
-    hLen = 40
+    hLen = 64
 
     @staticmethod
     def _hashString_(value: str) -> str:
@@ -108,7 +108,7 @@ class IGF:
         :param value: string to hash
         :return: hex output of the string hash
         """
-        m = hashlib.sha1()                  # get a sha1 instance
+        m = hashlib.sha256()                # get a sha256 instance
         m.update(str.encode(value))         # add the string to the buffer of the hash, this has to be a bytestring, not a normal string
         return m.hexdigest()                # return the hex output of the hash function
 
