@@ -1,5 +1,5 @@
 import math
-import hashlib
+from src.Utils.Parameters import Parameters
 """
 These classes will be used to implement a "index generation function", while keeping track
 of the current internal state for the next generation
@@ -31,7 +31,7 @@ class IGFError(Exception):
 
 class IGF:
 
-    def __init__(self, seed: str, N: int, hashSeed: bool, c: int, minCallsR: int):
+    def __init__(self, seed: str, hashSeed: bool):
         """
         This constructor will return a Index Generator with an initial state specified by the
         parameters. This algorithm is specified in part a of the algorithm in section 8.4.2.1
@@ -41,7 +41,7 @@ class IGF:
         :param c: index generation constant, an integer
         :param minCallsR: minimum number of calls, an integer
         """
-        if minCallsR > 2**32:                                           # 2
+        if Parameters.minCallsR > 2**32:                                # 2
             raise IGFError("minCallsR argument is bigger than 2^32")    # 2
 
         if hashSeed:                                                    # 3
@@ -54,14 +54,14 @@ class IGF:
         remLen = 0                                                      # 4
         buf = ""                                                        # 5
         counter = 0                                                     # 6
-        while counter < minCallsR:                                      # 8
+        while counter < Parameters.minCallsR:                           # 8
             C = "{0:08x}".format(counter)                                   # I
             H = IGF._hashString_(Z + C)                                     # II
             for i in range(len(H) // 2):                                    # III
                 buf += "{0:08b}".format(int(H[i * 2:(i + 1) * 2], 16))      # III
             counter += 1                                                    # IV
-        remLen = minCallsR * 8 * IGF.hLen                               # 9
-        self.state = State(Z, remLen, buf, counter, N, c)
+        remLen = Parameters.minCallsR * 8 * IGF.hLen                    # 9
+        self.state = State(Z, remLen, buf, counter, Parameters.N, Parameters.c)
 
     def generateIndex(self):
         """
@@ -99,7 +99,7 @@ class IGF:
         self.state = state                                              # h
         return i % state.N                                              # i
 
-    hLen = 64
+    hLen = Parameters.igfhash().digest_size * 2
 
     @staticmethod
     def _hashString_(value: str) -> str:
@@ -108,7 +108,7 @@ class IGF:
         :param value: string to hash
         :return: hex output of the string hash
         """
-        m = hashlib.sha256()                # get a sha256 instance
+        m = Parameters.igfhash()            # get a hash instance specified by Parameters.py
         m.update(str.encode(value))         # add the string to the buffer of the hash, this has to be a bytestring, not a normal string
         return m.hexdigest()                # return the hex output of the hash function
 
