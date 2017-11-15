@@ -1,4 +1,3 @@
-from src.NTRUCrypt.IndexGenerator import *
 import time
 from src.Utils.Parameters import *
 from src.Utils.Polynomial import *
@@ -18,19 +17,17 @@ class NTRUCrypt:
         :param seed: octet string seed for the index generating function
         :return: blinding polynomial r
         """
-        # a
-        igf = IGF(seed, True)
 
         r = Polynomial([0 for i in range(Parameters.N)])        # b
         t = 0                                                   # c
         while t < Parameters.dr:                                # d
-            i = igf.generateIndex()                                 # 1
+            i = self._getRand_(Parameters.N)                        # 1
             if r[i] == 0:                                           # 2
                 r[i] = 1                                                # I
                 t += 1                                                  # II
         t = 0                                                   # e
         while t < Parameters.dr:                                # f
-            i = igf.generateIndex()                                 # 1
+            i = self._getRand_(Parameters.N)                        # 1
             if r[i] == 0:                                           # 2
                 r[i] = -1                                               # I
                 t += 1                                                  # II
