@@ -41,7 +41,7 @@ class Polynomial:
                 string += " + {}X^{}".format(self._coef[i], i)
         return string
 
-    def __add__(self, other: "Polynomial, int") -> "Polynomial":
+    def __add__(self, other: "Polynomial/ int") -> "Polynomial":
         """
         This function will add (the coefficients of) two polynomials of length N together.
         This function will return a new Polynomial object
@@ -97,7 +97,7 @@ class Polynomial:
             p1, p2 = other, self
         new_coef = [self[i] - other[i] for i in range(len(p2))]                         # subtract the respective coefficients from each other and store the result in a new list
         if len(p1) > len(p2):
-            new_coef += [i * -1 for i in p1[(len(p2)-len(p1)):]]
+            new_coef += [-i for i in p1[(len(p2)-len(p1)):]]
         return Polynomial(new_coef)
 
     def __isub__(self, other: "Polynomial"):
@@ -134,10 +134,10 @@ class Polynomial:
         elif not isinstance(other, Polynomial):                                           # if other is not a polynomials throw an error
             raise PolynomialError("You cannot multiply a Polynomial and a {} together!".format(other.__class__.__name__))
 
-        H = [0 for i in range(N)]                                   # initialize the new coefficients list with zeroes
-        for i in range(len(self)):
-            for j in range(len(other)):
-                H[(i + j) % N] += self[i] * other[j]                # do the summation as specified in the IEEE document
+        H = [0] * N                                                 # initialize the new coefficients list with zeroes
+        for i, a in enumerate(self):
+            for j, b in enumerate(other):
+                H[(i + j) % N] += a * b                             # do the summation as specified in the IEEE document
         return Polynomial(H)
 
     def __imul__(self, other: "Polynomial"):
@@ -184,14 +184,14 @@ class Polynomial:
         :return: coefficient corresponding to X^item
         """
 
-        if isinstance(item, int):                                 # if item is an integer
-            if item > len(self):                                  # if the index is larger than the degree of the polynomial, throw an error
-                raise PolynomialError("Index is larger than the degree of the polynomial")
-        elif isinstance(item, slice):                             # if item is a slice
-            if item.start < -len(self) or (item.stop is not None and item.stop > len(self)):    # if the range of the slice falls outside of the polynomial, throw an error
-                raise PolynomialError("Slice range is out of bounds")
-        else:                                                     # if item is something else than integer or slice, throw an error
-            raise PolynomialError("Index has to be an integer, found {}".format(item.__class__.__name__))
+        # if isinstance(item, int):                                 # if item is an integer
+        #     if item > len(self):                                  # if the index is larger than the degree of the polynomial, throw an error
+        #         raise PolynomialError("Index is larger than the degree of the polynomial")
+        # elif isinstance(item, slice):                             # if item is a slice
+        #     if item.start < -len(self) or (item.stop is not None and item.stop > len(self)):    # if the range of the slice falls outside of the polynomial, throw an error
+        #         raise PolynomialError("Slice range is out of bounds")
+        # else:                                                     # if item is something else than integer or slice, throw an error
+        #     raise PolynomialError("Index has to be an integer, found {}".format(item.__class__.__name__))
 
         return self._coef[item]                                   # return the coefficient corresponding to X^item
 
@@ -340,7 +340,28 @@ class Polynomial:
         else:                                                                       # d
             return False                                                            # d
 
-    def inverse_2(self, p: int, e: int):
+    def inverse_2(self):
+        k = 0
+        b = Polynomial([1])
+        c = Polynomial([0])
+        f = deepcopy(self) % 2
+        g = Polynomial([-1] + ([0] * (Parameters.N-1)) + [1])
+
+        while True:
+            while f[0] == 0:
+                f._coef = f._coef[1:]
+                c._coef = [0] + c._coef
+                k += 1
+            if f[0] == 1 and f[1:] == ([0] * (len(f) - 1)):
+                b._coef = [0] * k + b._coef
+                return b
+            if degree(f) < degree(g):
+                f,g = g,f
+                b, c = c, b
+            f = (f + g) % 2
+            b = (b + c) % 2
+
+    def inverse_pow_2(self, p: int, e: int):
         """
         This function will calculate the inverse of the polynomial in Z(p^r)[X]/(X^N – 1) if the inverse exists.
         once an inverse is determined module a prime p, a simple method based on Newton iteration allows one to
@@ -353,7 +374,7 @@ class Polynomial:
         :return: if it exists a new Polynomial object containing the inverse of self in Z(p^r)[X]/(X^N – 1), or
         false if the inverse does not exist
         """
-        b = self.inverse(p)                             # 0
+        b = self.inverse_2()                            # 0
         if not isinstance(b, Polynomial):               # 0
             return False                                # 0
         q = p                                           # 1
@@ -412,20 +433,20 @@ if __name__ == "__main__":
     # a = Polynomial([1, 1, 0, 2, 1, 0, 2])
     # b = Polynomial([1, 0, 0, 2])
     # print(a+b)
-    # f = Polynomial([-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1])
-    # g = Polynomial([-1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1])
-    # fp = Polynomial([1, 2, 0, 2, 2, 1, 0, 2, 1, 2])
-    # fq = Polynomial([5, 9, 6, 16, 4, 15, 16, 22, 20, 18, 30])
+    f = Polynomial([-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1])
+    g = Polynomial([-1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1])
+    fp = Polynomial([1, 2, 0, 2, 2, 1, 0, 2, 1, 2])
+    fq = Polynomial([5, 9, 6, 16, 4, 15, 16, 22, 20, 18, 30])
     # print(f)
     # print(fq)
     # print(f*fq % Parameters.q)
     # print(f.inverse(Parameters.p))
     # print(fp)
     # print("-------------------------------------")
-    # print(f.inverse_2(2, 5))
-    # print(fq)
+    print(f.inverse_pow_2(2, 5))
+    print(fq)
 
-    a = Polynomial([45, 2, 77, 103, 12])
-    print(a)
-    print(Polynomial.fromBSP(a.toBSP(128), N=5, q=128))
-    print(Polynomial.fromOSP(a.toOSP(128), N=5, q=128))
+    # a = Polynomial([45, 2, 77, 103, 12])
+    # print(a)
+    # print(Polynomial.fromBSP(a.toBSP(128), N=5, q=128))
+    # print(Polynomial.fromOSP(a.toOSP(128), N=5, q=128))
