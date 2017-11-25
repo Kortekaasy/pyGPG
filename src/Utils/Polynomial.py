@@ -251,11 +251,12 @@ class Polynomial:
         :return: bit string representing the `self` polynomial
         """
         bitstring = self.toBSP(q)
-        octetstring = []
+        octetstring = bytearray()
         for i in range(len(bitstring) // 8):
-            octetstring.append("{0:02X}".format(int(bitstring[8*i:8*(i+1)], 2)))
-        octetstring.append("{0:02X}".format(int("{0:0<8}".format(bitstring[8*(len(bitstring) // 8)]), 2)))
-        return ''.join(octetstring)
+            octetstring.append(int(bitstring[8*i:8*(i+1)], 2))
+        if (len(bitstring) % 8) != 0:
+            octetstring.append(int("{0:0<8}".format(bitstring[8*(len(bitstring) // 8):]), 2))
+        return octetstring
 
     @staticmethod
     def fromBSP(B: str, N: int=Parameters.N, q: int=Parameters.q):
@@ -276,7 +277,7 @@ class Polynomial:
         return Polynomial(coefs)                        # return a polynomial with the coefficients from the bitstring
 
     @staticmethod
-    def fromOSP(O: str, N: int=Parameters.N, q: int=Parameters.q):
+    def fromOSP(O: bytearray, N: int=Parameters.N, q: int=Parameters.q):
         """
         Construct a Polynomial object of degree N and all coefficients modulo q from a octetstring B
         This algorithm is specified in section 7.6.2
@@ -285,12 +286,12 @@ class Polynomial:
         :param q: factor to reduce the coefficients of the polynomial by
         :return: Polynomial object of degree N constructed from O
         """
-        if len(O) != 2*N*math.ceil(math.log(q, 256)):               # a
+        if len(O) != math.ceil(N*math.ceil(math.log2(q))/8):          # a
             raise PolynomialError("The length of the octetstring does not match the degree of the polynomial")
 
         bitstring = ""                                              # b
-        for i in range(len(O) // 2):
-            bitstring += "{0:08b}".format(int(O[i*2:(i+1)*2], 16))  # b
+        for i in range(len(O)):
+            bitstring += "{0:08b}".format(O[i])                     # b
         bitstring = bitstring[:N*math.ceil(math.log2(q))]           # b
         return Polynomial.fromBSP(bitstring, N, q)                  # c & d
 
@@ -340,7 +341,40 @@ class Polynomial:
         else:                                                                       # d
             return False                                                            # d
 
+    def inverse_3(self):
+        N = Parameters.N
+        k = 0
+        b = Polynomial([1])
+        c = Polynomial([0])
+        f = deepcopy(self) % 3
+        f._coef += [0]
+        g = Polynomial([-1] + ([0] * (N - 1)) + [1])
+
+        while True:
+            f.center0(3)
+            g.center0(3)
+            while f[0] == 0:
+                f._coef = f._coef[1:]
+                c._coef = [0] + c._coef
+                k += 1
+                if len(f) == 0:
+                    return False
+            if abs(f[0]) == 1 and f[1:] == ([0] * (len(f) - 1)):
+                k %= N
+                kpol = Polynomial(([0] * (N - k)) + [f[0]])  # X^N-k
+                return kpol * b
+            if degree(f) < degree(g):
+                f,g = g,f
+                b, c = c, b
+            if f[0] == g[0]:
+                f = (f-g) % 3
+                b = (b-c) % 3
+            else:
+                f = (f+g) % 3
+                b = (b+c) % 3
+
     def inverse_2(self):
+        N = Parameters.N
         k = 0
         b = Polynomial([1])
         c = Polynomial([0])
@@ -353,8 +387,10 @@ class Polynomial:
                 c._coef = [0] + c._coef
                 k += 1
             if f[0] == 1 and f[1:] == ([0] * (len(f) - 1)):
-                b._coef = [0] * k + b._coef
-                return b
+                # b._coef = [0] * k + b._coef
+                k %= N
+                kpol = Polynomial(([0] * (N-k)) + [1])  # X^N-k
+                return kpol * b
             if degree(f) < degree(g):
                 f,g = g,f
                 b, c = c, b
@@ -383,6 +419,21 @@ class Polynomial:
             q *= q                                      # 3
             b = (b * (Polynomial([2]) - self*b)) % q    # 4
         return b % pe                                   # 5
+
+    def center0(self, q: int):
+        if q == 2048:
+            for i in range(len(self)):
+                c = self[i] & 2047
+                if c >= 1024:
+                    c -= 2048
+                self[i] = c
+        else:
+            for i in range(len(self)):
+                while self[i] < -q / 2:
+                    self[i] += q;
+                while self[i] > q / 2:
+                    self[i] -= q;
+
 
 
 def degree(F: Polynomial) -> int:
@@ -430,7 +481,7 @@ def EEA(p: int, a: Polynomial, b: Polynomial) -> (Polynomial, Polynomial, Polyno
 
 
 if __name__ == "__main__":
-    # a = Polynomial([1, 1, 0, 2, 1, 0, 2])
+    a = Polynomial([1, 1, 0, 2, 1, 0, 2])
     # b = Polynomial([1, 0, 0, 2])
     # print(a+b)
     f = Polynomial([-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1])
@@ -443,10 +494,15 @@ if __name__ == "__main__":
     # print(f.inverse(Parameters.p))
     # print(fp)
     # print("-------------------------------------")
-    print(f.inverse_pow_2(2, 5))
-    print(fq)
+    # print(f.inverse_pow_2(2, 5))
+    # print(fq)
 
     # a = Polynomial([45, 2, 77, 103, 12])
     # print(a)
     # print(Polynomial.fromBSP(a.toBSP(128), N=5, q=128))
-    # print(Polynomial.fromOSP(a.toOSP(128), N=5, q=128))
+    Parameters.N = 11
+    Parameters.p = 3
+    Parameters.q = 32
+    print((f.inverse_pow_2(2,5) * f) % 32)
+    os = (f % 3).toOSP(32)
+    print(Polynomial.fromOSP(os, N=11, q=32))

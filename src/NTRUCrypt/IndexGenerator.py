@@ -1,5 +1,6 @@
 import math
 from src.Utils.Parameters import Parameters
+from src.Utils.Arithmetic import i2osp, os2ip
 """
 These classes will be used to implement a "index generation function", while keeping track
 of the current internal state for the next generation
@@ -31,7 +32,7 @@ class IGFError(Exception):
 
 class IGF:
 
-    def __init__(self, seed: str, hashSeed: bool):
+    def __init__(self, seed: bytearray, hashSeed: bool):
         """
         This constructor will return a Index Generator with an initial state specified by the
         parameters. This algorithm is specified in part a of the algorithm in section 8.4.2.1
@@ -41,8 +42,12 @@ class IGF:
         :param c: index generation constant, an integer
         :param minCallsR: minimum number of calls, an integer
         """
+        if not Parameters.initialized:
+            raise IGFError("Initialize the parameters before creating an IGF!")
         if Parameters.minCallsR > 2**32:                                # 2
             raise IGFError("minCallsR argument is bigger than 2^32")    # 2
+        if isinstance(seed, str):
+            seed = bytearray(seed.encode('utf-8'))
 
         if hashSeed:                                                    # 3
             Z = IGF._hashString_(seed)                                      # I
@@ -55,12 +60,12 @@ class IGF:
         buf = ""                                                        # 5
         counter = 0                                                     # 6
         while counter < Parameters.minCallsR:                           # 8
-            C = "{0:08x}".format(counter)                                   # I
+            C = i2osp(counter, 4)                                           # I
             H = IGF._hashString_(Z + C)                                     # II
-            for i in range(len(H) // 2):                                    # III
-                buf += "{0:08b}".format(int(H[i * 2:(i + 1) * 2], 16))      # III
+            for i in range(len(H)):                                         # III
+                buf += "{0:08b}".format(H[i])                               # III
             counter += 1                                                    # IV
-        remLen = Parameters.minCallsR * 8 * IGF.hLen                    # 9
+        remLen = Parameters.minCallsR * 8 * IGF.hLen()                  # 9
         self.state = State(Z, remLen, buf, counter, Parameters.N, Parameters.c)
 
     def generateIndex(self):
@@ -80,36 +85,39 @@ class IGF:
             if state.remLen < state.c:                                  # c
                 M = state.buf[-state.remLen:]                               # 1
                 tmpLen = state.c - state.remLen                             # 2
-                cThreshold = state.counter + math.ceil(tmpLen / IGF.hLen)   # 3
+                cThreshold = state.counter + math.ceil(tmpLen / IGF.hLen()) # 3
                 while state.counter < cThreshold:                           # 4
-                    C = "{0:08x}".format(state.counter)                         # I
+                    C = i2osp(state.counter, 4)                                 # I
                     H = IGF._hashString_(state.Z + C)                           # II
-                    for i in range(len(H) // 2):                                # III
-                        M += "{0:08b}".format(int(H[i * 2:(i + 1) * 2], 16))    # III
+                    for i in range(len(H)):                                     # III
+                        M += "{0:08b}".format(H[i])                             # III
                     state.counter += 1                                          # IV
                     state.remLen *= 8                                           # IV
                     if state.counter > 2**32:                                   # V
                         raise IGFError("counter has become bigger than 2^32 !") # V
                 state.buf = M                                               # 5
-            b = state.buf[:state.c]                                     # e
+            b = state.buf[-state.c:]                                     # e
+            state.buf = state.buf[:-state.c]                             # e
             i = int(b, base=2)                                          # f
             b = False                                                   # g
-            if i >= (2**state.e - (2**state.e % state.N)):              # g
+            if i >= (2**state.c - (2**state.c % state.N)):              # g
                 b = True                                                # g
         self.state = state                                              # h
         return i % state.N                                              # i
 
-    hLen = Parameters.igfhash().digest_size * 2
+    @staticmethod
+    def hLen():
+        return Parameters.igfhash().digest_size
 
     @staticmethod
-    def _hashString_(value: str) -> str:
+    def _hashString_(value: bytearray) -> bytearray:
         """
         This function will hash the string value and return the hex output
         :param value: string to hash
         :return: hex output of the string hash
         """
         m = Parameters.igfhash()            # get a hash instance specified by Parameters.py
-        m.update(str.encode(value))         # add the string to the buffer of the hash, this has to be a bytestring, not a normal string
-        return m.hexdigest()                # return the hex output of the hash function
+        m.update(value)                     # add the string to the buffer of the hash, this has to be a bytestring, not a normal string
+        return m.digest()                   # return the hex output of the hash function
 
 
