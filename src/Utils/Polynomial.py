@@ -24,14 +24,15 @@ class Polynomial:
     This class will be used to represent polynomials.
     The coefficients of these polynomials will be represented by an integer list
     """
-    def __init__(self, coef: List[int]):
+    def __init__(self, coef: List[int], N: int):
         """
         This constructor will construct an Polynomial object with len(coef) coefficients.
         :param coef: int list containing the coefficients of the polynomial
+        :param N: int specifying the degree of the polynomial
         """
-        N = Parameters.N
+        self.N = N
 
-        self._coef = coef
+        self._coef = coef + (N - len(coef)) * [0]
 
     def __str__(self):
         """
@@ -61,7 +62,7 @@ class Polynomial:
         new_coef = [self[i] + other[i] for i in range(len(p2))]                         # add the respective coefficients together and store the result in a new list
         if len(p1) > len(p2):
             new_coef += p1[(len(p2)-len(p1)):]
-        return Polynomial(new_coef)                                                     # return a new Polynomial object with the added coefficients
+        return Polynomial(new_coef, len(p1))                                            # return a new Polynomial object with the added coefficients
 
     def __iadd__(self, other: "Polynomial"):
         """
@@ -100,7 +101,7 @@ class Polynomial:
         new_coef = [self[i] - other[i] for i in range(len(p2))]                         # subtract the respective coefficients from each other and store the result in a new list
         if len(p1) > len(p2):
             new_coef += [-i for i in p1[(len(p2)-len(p1)):]]
-        return Polynomial(new_coef)
+        return Polynomial(new_coef, len(p1))
 
     def __isub__(self, other: "Polynomial"):
         """
@@ -129,7 +130,7 @@ class Polynomial:
         :param other: int list containing the coefficients of the polynomial that needs to be multiplied with self
         :return: A new polynomial according to the cyclic convolutional product of self and other
         """
-        N = Parameters.N
+        N = self.N
 
         if isinstance(other, int):
             other = Polynomial([other])
@@ -140,7 +141,7 @@ class Polynomial:
         for i, a in enumerate(self):
             for j, b in enumerate(other):
                 H[(i + j) % N] += a * b                             # do the summation as specified in the IEEE document
-        return Polynomial(H)
+        return Polynomial(H, N)
 
     def __imul__(self, other: "Polynomial"):
         """
@@ -148,7 +149,7 @@ class Polynomial:
         This function will store the result in itself
         :param other: int list containing the coefficients of the polynomial that needs to be multiplied with self
         """
-        N = Parameters.N
+        N = self.N
 
         if isinstance(other, int):
             other = Polynomial([other])
@@ -170,7 +171,7 @@ class Polynomial:
         """
         if not isinstance(other, int):                          # if other is not an integer, throw an error
             raise PolynomialError("You cannot reduce the coefficients of a Polynomial by a {}".format(other.__class__.__name__))
-        return Polynomial([i % other for i in self._coef])      # return a new Polynomial object with all the coefficients of self `mod` other
+        return Polynomial([i % other for i in self._coef], self.N)      # return a new Polynomial object with all the coefficients of self `mod` other
 
     def __len__(self) -> int:
         """
@@ -261,7 +262,7 @@ class Polynomial:
         return octetstring
 
     @staticmethod
-    def fromBSP(B: str, N: int=Parameters.N, q: int=Parameters.q):
+    def fromBSP(B: str, N: int, q: int):
         """
         Construct a Polynomial object of degree N and all coefficients modulo q from a bitstring B
         This algorithm is specified in section 7.5.2
@@ -276,10 +277,10 @@ class Polynomial:
         size = math.ceil(math.log2(q))                  # check how many bits represent one coefficient
         for i in range(len(B) // size):
             coefs.append(int(B[size*i:size*(i+1)], 2))  # convert the bits to integers and add them to the coefficient list
-        return Polynomial(coefs)                        # return a polynomial with the coefficients from the bitstring
+        return Polynomial(coefs, N)                     # return a polynomial with the coefficients from the bitstring
 
     @staticmethod
-    def fromOSP(O: bytearray, N: int=Parameters.N, q: int=Parameters.q):
+    def fromOSP(O: bytearray, N: int, q: int):
         """
         Construct a Polynomial object of degree N and all coefficients modulo q from a octetstring B
         This algorithm is specified in section 7.6.2
@@ -297,33 +298,34 @@ class Polynomial:
         bitstring = bitstring[:N*math.ceil(math.log2(q))]           # b
         return Polynomial.fromBSP(bitstring, N, q)                  # c & d
 
-    def poly_div(self, p: int, b: "Polynomial") -> ("Polynomial", "Polynomial"):
-        """
-        This function divides self by polynomial b in the ring of polynomials with
-        integer coefficients modulo prime p. The leading coefficient of B, Bn, must be non-zero.
-        This algorithm is defined in section 6.3.3.1 of [1]
-        :param p: int prime
-        :param b: Polynomial object representing polynomial B
-        :return: polynomial tuple (q,r) where q and r are in the ring of polynomials with integer coefficients
-        modulo p, satisfying self = b x q + r and deg(r) < deg(q)
-        """
-        oldN = Parameters.N                                         # in order for the star multiplication to work properly,
-        N = degree(b)                                               # N needs to be set to degree(b) temporarily
-        Parameters.N = degree(self) + 1
-        b %= p
-
-        r = self % p                                                # a
-        q = Polynomial([0 for i in range(Parameters.N)])            # a
-        u = mul_inv(b[N], p)                                        # b
-        while degree(r) >= N:                                       # c
-            d = degree(r)                                               # 1
-            v = Polynomial([0 for i in range(d-N)] + [u * r[d]])        # 2
-            r = (r - v * b) % p                                         # 3
-            q = (q + v) % p                                             # 4
-            if d == 0:
-                break
-        Parameters.N = oldN                                         # restore Parameters.N
-        return q, r                                                 # d
+    # def poly_div(self, p: int, b: "Polynomial") -> ("Polynomial", "Polynomial"):
+    #     """
+    #     This function divides self by polynomial b in the ring of polynomials with
+    #     integer coefficients modulo prime p. The leading coefficient of B, Bn, must be non-zero.
+    #     This algorithm is defined in section 6.3.3.1 of [1]
+    #     :param p: int prime
+    #     :param b: Polynomial object representing polynomial B
+    #     :return: polynomial tuple (q,r) where q and r are in the ring of polynomials with integer coefficients
+    #     modulo p, satisfying self = b x q + r and deg(r) < deg(q)
+    #     """
+    #     print("I'm used!")
+    #     oldN = Parameters.N                                         # in order for the star multiplication to work properly,
+    #     N = degree(b)                                               # N needs to be set to degree(b) temporarily
+    #     Parameters.N = degree(self) + 1
+    #     b %= p
+    #
+    #     r = self % p                                                # a
+    #     q = Polynomial([0 for i in range(Parameters.N)])            # a
+    #     u = mul_inv(b[N], p)                                        # b
+    #     while degree(r) >= N:                                       # c
+    #         d = degree(r)                                               # 1
+    #         v = Polynomial([0 for i in range(d-N)] + [u * r[d]])        # 2
+    #         r = (r - v * b) % p                                         # 3
+    #         q = (q + v) % p                                             # 4
+    #         if d == 0:
+    #             break
+    #     Parameters.N = oldN                                         # restore Parameters.N
+    #     return q, r                                                 # d
 
     def inverse(self, p: int):
         """
@@ -335,7 +337,7 @@ class Polynomial:
         :return: if it exists a new Polynomial object containing the inverse of self in Zp[X]/(X^N – 1), or
         false if the inverse does not exist
         """
-        N = Parameters.N
+        N = self.N
         u, v, d = EEA(p, self, Polynomial([-1] + [0 for i in range(N-1)] + [1]))    # a
         if degree(d) == 0:                                                          # b
             d1 = mul_inv(d[0], p)                                                   # c
@@ -344,7 +346,7 @@ class Polynomial:
             return False                                                            # d
 
     def inverse_3(self):
-        N = Parameters.N
+        N = self.N
         k = 0
         b = Polynomial([1])
         c = Polynomial([0])
@@ -376,12 +378,12 @@ class Polynomial:
                 b = (b+c) % 3
 
     def inverse_2(self):
-        N = Parameters.N
+        N = self.N
         k = 0
-        b = Polynomial([1])
-        c = Polynomial([0])
+        b = Polynomial([1], N + 1)
+        c = Polynomial([0], N + 1)
         f = deepcopy(self) % 2
-        g = Polynomial([-1] + ([0] * (Parameters.N-1)) + [1])
+        g = Polynomial([-1] + ([0] * (self.N-1)) + [1], N + 1)
 
         while True:
             while f[0] == 0:
@@ -391,7 +393,7 @@ class Polynomial:
             if f[0] == 1 and f[1:] == ([0] * (len(f) - 1)):
                 # b._coef = [0] * k + b._coef
                 k %= N
-                kpol = Polynomial(([0] * (N-k)) + [1])  # X^N-k
+                kpol = Polynomial(([0] * (N-k)) + [1], N)  # X^N-k
                 return kpol * b
             if degree(f) < degree(g):
                 f,g = g,f
@@ -419,7 +421,7 @@ class Polynomial:
         pe = p**e                                       # 2
         while q < pe:                                   # 2
             q *= q                                      # 3
-            b = (b * (Polynomial([2]) - self*b)) % q    # 4
+            b = (b * (Polynomial([2], self.N) - self*b)) % q    # 4
         return b % pe                                   # 5
 
     def center0(self, q: int):
@@ -480,31 +482,31 @@ def EEA(p: int, a: Polynomial, b: Polynomial) -> (Polynomial, Polynomial, Polyno
         v3 = t3                                                                 # 6
     v, vr = ((a*u % p) % p).poly_div(p, b)                                  # g
     return u, v, d                                                          # h
-
-
-if __name__ == "__main__":
-    a = Polynomial([1, 1, 0, 2, 1, 0, 2])
-    # b = Polynomial([1, 0, 0, 2])
-    # print(a+b)
-    f = Polynomial([-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1])
-    g = Polynomial([-1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1])
-    fp = Polynomial([1, 2, 0, 2, 2, 1, 0, 2, 1, 2])
-    fq = Polynomial([5, 9, 6, 16, 4, 15, 16, 22, 20, 18, 30])
-    # print(f)
-    # print(fq)
-    # print(f*fq % Parameters.q)
-    # print(f.inverse(Parameters.p))
-    # print(fp)
-    # print("-------------------------------------")
-    # print(f.inverse_pow_2(2, 5))
-    # print(fq)
-
-    # a = Polynomial([45, 2, 77, 103, 12])
-    # print(a)
-    # print(Polynomial.fromBSP(a.toBSP(128), N=5, q=128))
-    Parameters.N = 11
-    Parameters.p = 3
-    Parameters.q = 32
-    print((f.inverse_pow_2(2,5) * f) % 32)
-    os = (f % 3).toOSP(32)
-    print(Polynomial.fromOSP(os, N=11, q=32))
+#
+#
+# if __name__ == "__main__":
+#     a = Polynomial([1, 1, 0, 2, 1, 0, 2])
+#     # b = Polynomial([1, 0, 0, 2])
+#     # print(a+b)
+#     f = Polynomial([-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1])
+#     g = Polynomial([-1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1])
+#     fp = Polynomial([1, 2, 0, 2, 2, 1, 0, 2, 1, 2])
+#     fq = Polynomial([5, 9, 6, 16, 4, 15, 16, 22, 20, 18, 30])
+#     # print(f)
+#     # print(fq)
+#     # print(f*fq % Parameters.q)
+#     # print(f.inverse(Parameters.p))
+#     # print(fp)
+#     # print("-------------------------------------")
+#     # print(f.inverse_pow_2(2, 5))
+#     # print(fq)
+#
+#     # a = Polynomial([45, 2, 77, 103, 12])
+#     # print(a)
+#     # print(Polynomial.fromBSP(a.toBSP(128), N=5, q=128))
+#     Parameters.N = 11
+#     Parameters.p = 3
+#     Parameters.q = 32
+#     print((f.inverse_pow_2(2,5) * f) % 32)
+#     os = (f % 3).toOSP(32)
+#     print(Polynomial.fromOSP(os, N=11, q=32))

@@ -58,7 +58,7 @@ class MGF:
             H = MGF._hashString_(Z+C)                                               # 2
             buf.extend(H)                                                           # 3
             counter += 1                                                            # 4
-        i, cur = Polynomial([0] * N), 0                                         # h
+        i, cur = Polynomial([0], N), 0                                          # h
         loopCond = True
         while loopCond:
             for o in buf:                                                           # i    - o is already an int
