@@ -1,9 +1,8 @@
+import secrets
 import time
 
 from src.NTRUCrypt.MaskGenerator import MGF
-from src.Utils.Parameters import *
 from src.Utils.Polynomial import *
-import secrets
 
 
 class KeyPair:
@@ -133,8 +132,8 @@ class NTRUCryptError(Exception):
 class NTRUCrypt:
 
     def __init__(self):
-        Parameters.initParameters("ees401ep1")
-        # Parameters.initParameters("ees1499ep1")
+        # Parameters.initParameters("ees401ep1")
+        Parameters.initParameters("ees1499ep1")
         pass
 
     def blindingPolynomial(self, seed: bytearray):
@@ -196,9 +195,10 @@ class NTRUCrypt:
             # f.center0(3)
             f %= Parameters.q
             f_inv_2 = f.inverse_pow_2(2, int(math.log2(Parameters.q)))    # f
-            f_inv_3 = f.inverse_3()
+            f_inv_3 = Polynomial([1])
+            # f_inv_3 = f.inverse_3()
             f_invertible = isinstance(f_inv_2, Polynomial)            # f
-            f_invertible &= isinstance(f_inv_3, Polynomial)
+            # f_invertible &= isinstance(f_inv_3, Polynomial)
             print("f invertible: {}".format(f_invertible))
 
         print("generating g")
@@ -407,7 +407,7 @@ class NTRUCrypt:
 
 crypt = NTRUCrypt()
 t0 = time.clock()
-# kp = crypt.keygen()
+kp = crypt.keygen()
 # kp.save("My great pass")
 kp = KeyPair.load('test1499.key', "My great pass")
 t1 = time.clock()
