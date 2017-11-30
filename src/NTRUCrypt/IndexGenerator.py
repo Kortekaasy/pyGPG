@@ -1,6 +1,8 @@
 import math
-from src.Utils.Parameters import Parameters
-from src.Utils.Arithmetic import i2osp, os2ip
+
+from src.NTRUCrypt.EncryptionParameters import Parameters
+from src.Utils.Arithmetic import i2osp
+
 """
 These classes will be used to implement a "index generation function", while keeping track
 of the current internal state for the next generation
@@ -116,7 +118,7 @@ class IGF:
         :param value: string to hash
         :return: hex output of the string hash
         """
-        m = Parameters.igfhash()            # get a hash instance specified by Parameters.py
+        m = Parameters.igfhash()            # get a hash instance specified by EncryptionParameters.py
         m.update(value)                     # add the string to the buffer of the hash, this has to be a bytestring, not a normal string
         return m.digest()                   # return the hex output of the hash function
 

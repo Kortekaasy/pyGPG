@@ -1,7 +1,8 @@
 import math
-from src.Utils.Parameters import Parameters
-from src.Utils.Polynomial import Polynomial
+
+from src.NTRUCrypt.EncryptionParameters import Parameters
 from src.Utils.Arithmetic import i2osp
+from src.Utils.Polynomial import Polynomial
 
 """
 These classes will be used to implement a "index generation function", while keeping track
@@ -96,7 +97,7 @@ class MGF:
         if isinstance(value, str):
             value = value.encode('utf-8')
 
-        m = Parameters.mgfhash()            # get a hash instance specified by Parameters.py
+        m = Parameters.mgfhash()            # get a hash instance specified by EncryptionParameters.py
         m.update(value)                     # add the string to the buffer of the hash, this has to be a bytestring, not a normal string
         return bytearray(m.digest())        # return the hex output of the hash function
 

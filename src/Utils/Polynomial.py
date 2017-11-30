@@ -1,8 +1,10 @@
-from typing import List
-from copy import deepcopy
 import math
-from src.Utils.Parameters import Parameters
+from copy import deepcopy
+from typing import List
+
+from src.NTRUCrypt.EncryptionParameters import Parameters
 from src.Utils.Arithmetic import *
+
 """
 [1]: IEEE Std 1363.1 - IEEE Standard Specification for Public Key Cryptographic Techniques Based on Hard Problems over Lattices (http://ieeexplore.ieee.org/document/4800404/)
 [2]: Almost Inverses and Fast NTRU Key Creation (https://assets.onboardsecurity.com/static/downloads/NTRU/resources/NTRUTech014.pdf)
