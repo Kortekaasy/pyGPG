@@ -16,7 +16,7 @@ class Parameters:
     keyNormBound = None
     # KGP-NTRUSign1
     pertubationBases = 0
-    basisType= ""
+    basisType = ""
 
     # NTRUSign Scheme Options (required)
     normBound = 0
@@ -27,14 +27,14 @@ class Parameters:
     numGroups = 0
     numElements = 0
     hashFunc = None
-    prng = None# PRNG-MGF1 with MDC-NTRU (PRNG)
+    prng = None  # PRNG-MGF1 with MDC-NTRU (PRNG)
 
     pset = ""
 
     @staticmethod
     def initParameters(parameterset: str):
         if parameterset == "ees251sp2":
-            Parameters.setParameters(251, 128, 73, 71, 200, 0, 0, "standard", 310, 1, hashlib.sha1, "PRNG-MGF1 with SHA-1 (PRNG)", "ees251sp2", 8, 13, 3)
+            Parameters.setParameters(251, 127, 73, 71, 200, 0, 0, "standard", 310, 1, hashlib.sha1, "PRNG-MGF1 with SHA-1 (PRNG)", "ees251sp2", 8, 13, 3)
         elif parameterset == "ees251sp3":
             Parameters.setParameters(251, 128, 73, 71, 200, 0, 0, "standard", 310, 1, hashlib.sha1, "PRNG-MGF1 with MDC-NTRU (PRNG)", "ees251sp3", 8, 13, 3)
         elif parameterset == "ees251sp4":
