@@ -132,7 +132,7 @@ def decryptFile(fileLoc):
         sys.exit(0)
 
     for i in range(3):
-        pw = input("[{}/3] Please enter the password to unlock the keyfile:\n".format(i+1))
+        pw = input("[{}/3] Please enter the password to unlock the keyfile for id: {}\n".format(i+1, keyRecord[0]))
         try:
             kp = KeyPair.load(keyRecord[1], pw)
             break
