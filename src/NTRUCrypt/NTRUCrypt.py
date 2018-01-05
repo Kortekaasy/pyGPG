@@ -14,12 +14,13 @@ class KeyPair:
         self.g = g
         self.h = h
 
-    def save(self, password: str):
+    def save(self, password: str, path: str):
         from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
         from cryptography.hazmat.backends import default_backend
         from cryptography.fernet import Fernet
         import base64
-        import hmac
+        import hmac, hashlib
+        import os
 
         backend = default_backend()
         salt = secrets.token_bytes(16)
@@ -38,7 +39,7 @@ class KeyPair:
         fptoken = f.encrypt(bytes(self.fp.toOSP(Parameters.q)))
         fqtoken = f.encrypt(bytes(self.fq.toOSP(Parameters.q)))
         gtoken = f.encrypt(bytes(self.g.toOSP(Parameters.q)))
-        htoken = f.encrypt(bytes(self.h.toOSP(Parameters.q)))
+        htoken = bytes(self.h.toOSP(Parameters.q))
 
         fhmac = hmac.new(key, self.f.toOSP(Parameters.q)).digest()
         fphmac = hmac.new(key, self.fp.toOSP(Parameters.q)).digest()
@@ -65,17 +66,24 @@ class KeyPair:
             }
         }
 
-        with open('test1499.key', 'w') as fp:
+        md = hashlib.sha256(str(toSave).encode('utf-8'))
+        filepath = os.path.join(path, str(md.hexdigest())[:8] + ".key")
+
+        with open(filepath, 'w') as fp:
             import json
-            json.dump(toSave,fp)
+            json.dump(toSave, fp)
+        return filepath
 
     @staticmethod
-    def load(file: str, password: str):
+    def load(file: str, password: str, publicOnly = False):
         from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
         from cryptography.hazmat.backends import default_backend
         from cryptography.fernet import Fernet
         import base64
         import hmac
+
+        if publicOnly:
+            return KeyPair._loadPublic(file)
 
         with open(file, 'rb') as fp:
             import json
@@ -100,7 +108,7 @@ class KeyPair:
         fpbytes = f.decrypt(bytes(contents['tokens']['fp']))
         fqbytes = f.decrypt(bytes(contents['tokens']['fq']))
         gbytes = f.decrypt(bytes(contents['tokens']['g']))
-        hbytes = f.decrypt(bytes(contents['tokens']['h']))
+        hbytes = bytes(contents['tokens']['h'])
 
         fhmac = hmac.compare_digest(bytes(contents['hmacs']['f']), hmac.new(key, fbytes).digest())
         fphmac = hmac.compare_digest(bytes(contents['hmacs']['fp']), hmac.new(key, fpbytes).digest())
@@ -120,6 +128,23 @@ class KeyPair:
                 Polynomial.fromOSP(hbytes, Parameters.N, Parameters.q),
             )
 
+    @staticmethod
+    def _loadPublic(file: str):
+        with open(file, 'rb') as fp:
+            import json
+            contents = json.load(fp)
+        version = contents['version']
+
+        hbytes = bytearray(bytes(contents['tokens']['h']))
+        Parameters.initParameters(version)
+        return KeyPair(
+            None,
+            None,
+            None,
+            None,
+            Polynomial.fromOSP(hbytes, Parameters.N, Parameters.q),
+        )
+
 
 class NTRUCryptError(Exception):
     """
@@ -131,9 +156,9 @@ class NTRUCryptError(Exception):
 
 class NTRUCrypt:
 
-    def __init__(self):
-        # Parameters.initParameters("ees401ep1")
-        Parameters.initParameters("ees1499ep1")
+    def __init__(self, parameterSet):
+        Parameters.initParameters(parameterSet)
+        # Parameters.initParameters("ees1499ep1")
         pass
 
     def blindingPolynomial(self, seed: bytearray):
@@ -191,14 +216,17 @@ class NTRUCrypt:
                 if F[i] == 0:                                           # 2
                     F[i] = -1                                               # I
                     t += 1                                                  # II
-            f = Polynomial([1], N) + (Polynomial([Parameters.p], 1) * F)       # e
-            # f.center0(3)
+
+            # print("F: {}".format(F))
+            # print("Parameters.p: {}".format(Parameters.p))
+            # print("p*F: {}".format(Polynomial([Parameters.p], 1) * F))
+            f = Polynomial([1], N) + (F * Polynomial([Parameters.p], 1))       # e
+            # print("f: {}".format(f))
             f %= Parameters.q
+            # print("f: {}".format(f))
             f_inv_2 = f.inverse_pow_2(2, int(math.log2(Parameters.q)))    # f
             f_inv_3 = Polynomial([1], N)
-            # f_inv_3 = f.inverse_3()
             f_invertible = isinstance(f_inv_2, Polynomial)            # f
-            # f_invertible &= isinstance(f_inv_3, Polynomial)
             print("f invertible: {}".format(f_invertible))
 
         print("generating g")
@@ -218,7 +246,7 @@ class NTRUCrypt:
             g_inv = g.inverse_pow_2(2, int(math.log2(Parameters.q)))    # l
             g_invertible = isinstance(g_inv, Polynomial)            # l
             print("g invertible: {}".format(g_invertible))
-        h = f_inv_2 * g * Polynomial([Parameters.p],1)                  # m
+        h = f_inv_2 * g * Polynomial([Parameters.p], 1)                  # m
         h %= Parameters.q
         kp = KeyPair(f, f_inv_3, f_inv_2, g, h)
         return kp
@@ -404,22 +432,33 @@ class NTRUCrypt:
             max = 2**32
         return secrets.randbelow(max)
 
+"""
+ees659ep1
+ees791ep1
+ees1087ep1
+ees1499ep1
+"""
+if __name__ == "__main__":
+    crypt = NTRUCrypt("ees659ep1")
+    t0 = time.clock()
+    # kp = crypt.keygen()
+    kp = KeyPair.load('819218ce.key', "My great pass")
+    print("f: {}, len: {}".format(kp.f, len(kp.f)))
+    print("fp: {}, len: {}".format(kp.fp, len(kp.fp)))
+    print("fq: {}, len: {}".format(kp.fq, len(kp.fq)))
+    print("g: {}, len: {}".format(kp.g, len(kp.g)))
+    print("h: {}, len: {}".format(kp.h, len(kp.h)))
+    # kp.save("My great pass", "./")
+    t1 = time.clock()
+    print("keygen in {} seconds".format(t1-t0))
 
-crypt = NTRUCrypt()
-t0 = time.clock()
-# kp = crypt.keygen()
-# kp.save("My great pass")
-kp = KeyPair.load('test1499.key', "My great pass")
-t1 = time.clock()
-print("keygen in {} seconds".format(t1-t0))
+    t0 = time.clock()
+    msg = bytearray("Hello World!".encode('utf-8'))
+    cipher = crypt.encrypt(msg, kp.h)
+    t1 = time.clock()
+    print("encryption in {} seconds".format(t1-t0))
 
-t0 = time.clock()
-msg = bytearray("The quick brown fox jumps over the lazy dog".encode('utf-8'))
-cipher = crypt.encrypt(msg, kp.h)
-t1 = time.clock()
-print("encryption in {} seconds".format(t1-t0))
-
-t0 = time.clock()
-print(crypt.decrypt(cipher, kp.f, kp.h).decode('utf-8'))
-t1 = time.clock()
-print("decryption in {} seconds".format(t1-t0))
+    t0 = time.clock()
+    print(crypt.decrypt(cipher, kp.f, kp.h).decode('utf-8'))
+    t1 = time.clock()
+    print("decryption in {} seconds".format(t1-t0))
