@@ -201,7 +201,7 @@ class NTRUCrypt:
         f_invertible = False
         g_invertible = False
 
-        print("generating f")
+        # print("generating f")
         while not f_invertible:
             F = Polynomial([0], N)                                  # a
             t = 0                                                   # b
@@ -227,9 +227,9 @@ class NTRUCrypt:
             f_inv_2 = f.inverse_pow_2(2, int(math.log2(Parameters.q)))    # f
             f_inv_3 = Polynomial([1], N)
             f_invertible = isinstance(f_inv_2, Polynomial)            # f
-            print("f invertible: {}".format(f_invertible))
+            # print("f invertible: {}".format(f_invertible))
 
-        print("generating g")
+        # print("generating g")
         while not g_invertible:
             t = 0                                                   # h
             while t < Parameters.dg + 1:                            # i
@@ -245,7 +245,7 @@ class NTRUCrypt:
                     t += 1                                                  # II
             g_inv = g.inverse_pow_2(2, int(math.log2(Parameters.q)))    # l
             g_invertible = isinstance(g_inv, Polynomial)            # l
-            print("g invertible: {}".format(g_invertible))
+            # print("g invertible: {}".format(g_invertible))
         h = f_inv_2 * g * Polynomial([Parameters.p], 1)                  # m
         h %= Parameters.q
         kp = KeyPair(f, f_inv_3, f_inv_2, g, h)
