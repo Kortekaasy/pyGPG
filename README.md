@@ -2,6 +2,7 @@
 A GPG like application in python, but with lattice based encryption.
 
 # How to use pyGPG
+
 in the dist directory you can find two different executables: "pygpg" and "pygpg.exe".
 The pygpg.exe executable is build for windows environments, and the pygpg executable is build
 for posix environments. There are three basic commands available, which you can find beneath:
