@@ -204,17 +204,17 @@ class Polynomial:
         :param key: integer index of the coefficient that needs to be updated.
         :param value: integer value of new coefficient
         """
-        if isinstance(key, int):                                # if item is an integer
-            if key > len(self):                                 # if the index is larger than the degree of the polynomial, throw an error
-                raise PolynomialError("Index is larger than the degree of the polynomial")
-        elif isinstance(key, slice):                            # if item is a slice
-            if key.start < -len(self) or key.stop > len(self):  # if the range of the slice falls outside of the polynomial, throw an error
-                raise PolynomialError("Slice range is out of bounds")
-        else:                                                   # if item is something else than integer or slice, throw an error
-            raise PolynomialError("Index has to be an integer, found {}".format(key.__class__.__name__))
-
-        if not isinstance(value, int):                          # if the value is not an integer, throw an error
-            raise PolynomialError("Value has to be an integer, found {}".format(key.__class__.__name__))
+        # if isinstance(key, int):                                # if item is an integer
+        #     if key > len(self):                                 # if the index is larger than the degree of the polynomial, throw an error
+        #         raise PolynomialError("Index is larger than the degree of the polynomial")
+        # elif isinstance(key, slice):                            # if item is a slice
+        #     if key.start < -len(self) or key.stop > len(self):  # if the range of the slice falls outside of the polynomial, throw an error
+        #         raise PolynomialError("Slice range is out of bounds")
+        # else:                                                   # if item is something else than integer or slice, throw an error
+        #     raise PolynomialError("Index has to be an integer, found {}".format(key.__class__.__name__))
+        #
+        # if not isinstance(value, int):                          # if the value is not an integer, throw an error
+        #     raise PolynomialError("Value has to be an integer, found {}".format(key.__class__.__name__))
 
         self._coef[key] = value                                 # update the coefficient corresponding to x^key
 
@@ -298,34 +298,44 @@ class Polynomial:
         bitstring = bitstring[:N*math.ceil(math.log2(q))]           # b
         return Polynomial.fromBSP(bitstring, N, q)                  # c & d
 
-    # def poly_div(self, p: int, b: "Polynomial") -> ("Polynomial", "Polynomial"):
-    #     """
-    #     This function divides self by polynomial b in the ring of polynomials with
-    #     integer coefficients modulo prime p. The leading coefficient of B, Bn, must be non-zero.
-    #     This algorithm is defined in section 6.3.3.1 of [1]
-    #     :param p: int prime
-    #     :param b: Polynomial object representing polynomial B
-    #     :return: polynomial tuple (q,r) where q and r are in the ring of polynomials with integer coefficients
-    #     modulo p, satisfying self = b x q + r and deg(r) < deg(q)
-    #     """
-    #     print("I'm used!")
-    #     oldN = Parameters.N                                         # in order for the star multiplication to work properly,
-    #     N = degree(b)                                               # N needs to be set to degree(b) temporarily
-    #     Parameters.N = degree(self) + 1
-    #     b %= p
-    #
-    #     r = self % p                                                # a
-    #     q = Polynomial([0 for i in range(Parameters.N)])            # a
-    #     u = mul_inv(b[N], p)                                        # b
-    #     while degree(r) >= N:                                       # c
-    #         d = degree(r)                                               # 1
-    #         v = Polynomial([0 for i in range(d-N)] + [u * r[d]])        # 2
-    #         r = (r - v * b) % p                                         # 3
-    #         q = (q + v) % p                                             # 4
-    #         if d == 0:
-    #             break
-    #     Parameters.N = oldN                                         # restore Parameters.N
-    #     return q, r                                                 # d
+    def poly_div(self, p: int, b: "Polynomial") -> ("Polynomial", "Polynomial"):
+        """
+        This function divides self by polynomial b in the ring of polynomials with
+        integer coefficients modulo prime p. The leading coefficient of B, Bn, must be non-zero.
+        This algorithm is defined in section 6.3.3.1 of [1]
+        :param p: int prime
+        :param b: Polynomial object representing polynomial B
+        :return: polynomial tuple (q,r) where q and r are in the ring of polynomials with integer coefficients
+        modulo p, satisfying self = b x q + r and deg(r) < deg(q)
+        """
+        # print("I'm used!")
+        # oldN = Parameters.N                                         # in order for the star multiplication to work properly,
+        N = degree(b)                                               # N needs to be set to degree(b) temporarily
+        self.N += 1
+        b %= p
+
+        print("a: {}".format(self))
+        print("b: {}".format(b))
+
+        r = self % p                                                # a
+        q = Polynomial([0], N)            # a
+        u = mul_inv(b[N], p)                                        # b
+        if degree(r) >= N and u is None:
+            raise PolynomialError("Cannot calculate inverse of b[N]")
+        while degree(r) >= N:                                       # c
+            # print("ping")
+            d = degree(r)                                               # 1
+            print("krakakaka")
+            print("d-N  : {}".format(d-N))
+            print("u    : {}".format(u))
+            print("r[d] : {}".format(r[d]))
+            v = Polynomial([0] * (d-N) + [u * r[d]], self.N)        # 2
+            r = (r - v * b) % p                                         # 3
+            q = (q + v) % p                                             # 4
+            if d == 0:
+                break
+        self.N -= 1                                         # restore Parameters.N
+        return q, r                                                 # d
 
     def inverse(self, p: int):
         """
@@ -338,12 +348,12 @@ class Polynomial:
         false if the inverse does not exist
         """
         N = self.N
-        u, v, d = EEA(p, self, Polynomial([-1] + [0 for i in range(N-1)] + [1]))    # a
-        if degree(d) == 0:                                                          # b
-            d1 = mul_inv(d[0], p)                                                   # c
-            return Polynomial([d1]) * u                                             # c
-        else:                                                                       # d
-            return False                                                            # d
+        u, v, d = EEA(p, self, Polynomial([-1] + [0 for i in range(N-1)] + [1], N+1))    # a
+        if degree(d) == 0:                                                               # b
+            d1 = mul_inv(d[0], p)                                                        # c
+            return Polynomial([d1], N) * u                                                  # c
+        else:                                                                            # d
+            return False                                                                 # d
 
     def inverse_3(self):
         N = self.N
@@ -396,7 +406,7 @@ class Polynomial:
                 kpol = Polynomial(([0] * (N-k)) + [1], N)  # X^N-k
                 return kpol * b
             if degree(f) < degree(g):
-                f,g = g,f
+                f, g = g, f
                 b, c = c, b
             f = (f + g) % 2
             b = (b + c) % 2
@@ -434,9 +444,173 @@ class Polynomial:
         else:
             for i in range(len(self)):
                 while self[i] < -q / 2:
-                    self[i] += q;
+                    self[i] += q
                 while self[i] > q / 2:
-                    self[i] -= q;
+                    self[i] -= q
+
+    def resultant_p(self, p: int):
+        """
+        This function will calculate the resultant of this polynomial object with
+        the polynomial X^N - 1 modulo p.
+        :param p: prime integer
+        :return: Polynomial rhoP in (Z/pZ)[X]/(X^N –1) and an integer resultant
+        satisfying resultant = rhoP * self + rhox * (X^N -1) for some rhox in Zp[x]
+        """
+        N = self.N
+
+        A = Polynomial([-1] + [0] * (N - 1) + [1], N + 1)
+        # B = deepcopy(self)
+        B = Polynomial(self[:], N+1)
+        V1, V2, Temp = Polynomial([0], N+1), Polynomial([1], N+1), Polynomial([0], N+1)
+        a, b, tempa, c, resultant = degree(A), degree(B), degree(A), 0, 1
+        while b > 0:
+            c = (mul_inv(B[b] % p, p) * A[a]) % p
+            A = (A - B * Polynomial([0]*(a-b) + [c], N+1)) % p
+            V1 = (V1 - V2 * Polynomial([0]*(a-b) + [c], N+1)) % p
+            if degree(A) < b:
+                resultant = (resultant * B[b]**(tempa-degree(A))) % p
+                if (tempa % 2) == 1 and (b % 2) == 1:
+                    resultant = (resultant * -1) % p
+                A, B = B, A
+                V1, V2 = V2, V1
+                tempa = b
+            a, b = degree(A), degree(B)
+        resultant = (resultant * B[0]**a) % p
+        if B[0] == 0:
+            A, B = B, A
+            V1, V2 = V2, V1
+            print("shiiiit")
+        c = mul_inv(B[0], p) % p
+        rhoP = (V2 * Polynomial([c*resultant], N)) % p
+        return rhoP, resultant
+
+    def resultant(self) -> ("Polynomial", int):
+        """
+        This function will calculate the resultant of this polynomial with
+        the polynomial X^N - 1
+        :return: Polynomial rhoP in Z[X]/(X^N –1) and an integer resultant satisfying
+        resultant = rhoP * P + rhox*(X^N –1) in Zp[X] for some rhox in Zp[X].
+        """
+        N = self.N
+        # Take as max the actual resultant of self and X^N - 1, calculated using the determinant of the sylvester matrix
+        Max = sylvester_resultant(self, Polynomial([-1] + [0] * (N - 1) + [1], N + 1))
+        print("Max: {}".format(Max))
+
+        primes = []
+        Max2, i = Max * 2, 0
+        print("Max2 = {}".format(Max2))
+        primesprod = 1
+        while primesprod < Max2:
+            primes.append(PRIMES[i])
+            primesprod *= PRIMES[i]
+            i += 1
+
+        pproduct, resultant = 1, 1
+        rhoP = Polynomial([1], N)
+        j, temp = 0, 0
+        while j < len(primes):
+            print("{0:.2f}".format(j/len(primes)))
+            pj = primes[j]
+            temp = pj * pproduct
+            rhop, resp = self.resultant_p(pj)
+            _, alphap, betapprod = xgcd(pj, pproduct)
+            resultant = (resultant * alphap * pj + resp * betapprod * pproduct) % temp
+            rhoP = (rhoP * Polynomial([alphap * pj], N) + rhop * Polynomial([betapprod * pproduct], N)) % temp
+            pproduct = temp
+            j += 1
+        rhoP %= Max2
+        rhoP.center0(Max2)
+        return rhoP, resultant
+
+    def resultant2(self) -> ("Polynomial", int):
+        """
+        This function will calculate the resultant of this polynomial with
+        the polynomial X^N - 1
+        :return: Polynomial rhoP in Z[X]/(X^N –1) and an integer resultant satisfying
+        resultant = rhoP * P + rhox*(X^N –1) in Zp[X] for some rhox in Zp[X].
+        """
+        N = self.N
+        NUM_EQUAL_RESULTANTS = 3
+
+        pproduct, resultant = 1, 1
+        j, temp = 0, 0
+        numEqual = 1
+        modResultants = []
+        while True:
+            print("while loop: {} - numEqual: {}".format(j, numEqual))
+            pj = PRIMES[j]
+            modResultants.append(list(self.resultant_p(pj)) + [pj])
+            rhop, resp, _ = modResultants[0]
+
+            temp = pj * pproduct
+            _, alphap, betapprod = xgcd(pj, pproduct)
+            resPrev = resultant
+            resultant = (resultant * alphap * pj + resp * betapprod * pproduct) % temp
+            # rhoP = (rhoP * Polynomial([alphap * pj], N) + rhop * Polynomial([betapprod * pproduct], N)) % temp
+            pproduct = temp
+            pproduct2 = pproduct // 2
+            pproduct2n = pproduct2 * -1
+            if resultant > pproduct2:
+                resultant -= pproduct
+            elif resultant < pproduct2n:
+                resultant += pproduct
+
+            if resultant == resPrev:
+                numEqual += 1
+                if numEqual > NUM_EQUAL_RESULTANTS:
+                    break
+            j += 1
+
+        while True:
+            if len(modResultants) <= 1:
+                break
+            modRes1 = modResultants[0]
+            modRes2 = modResultants[1]
+            modResultants = modResultants[2:] + [combineRho(modRes1, modRes2)]
+
+        rhoP = modResultants[0][0]
+        if resultant > pproduct2:
+            resultant -= pproduct
+        elif resultant < pproduct2n:
+            resultant += pproduct
+
+        for i in range(N):
+            c = rhoP[i]
+            if c > pproduct2:
+                rhoP[i] -= pproduct
+            if c < pproduct2n:
+                rhoP[i] += pproduct
+
+        # rhoP %= Max2
+        # rhoP.center0(Max2)
+        return rhoP, resultant
+
+
+def combineRho(modRes1, modRes2):
+    # print("modRes1: {}".format(modRes1))
+    # print("modRes2: {}".format(modRes2))
+
+    mod1 = modRes1[2]
+    # print("mod1: {}".format(mod1))
+    mod2 = modRes2[2]
+    # print("mod2: {}".format(mod2))
+
+    prod = mod1 * mod2
+    # print("prod: {}".format(prod))
+    _, x, y = xgcd(mod2, mod1)
+    # print("inverses: {}, {}".format(x, y))
+
+    rho1 = modRes1[0]
+    # print("rho1: {}".format(rho1))
+    rho1 = rho1 * Polynomial([x * mod2], rho1.N)
+    # print("rho1-2: {}".format(rho1))
+    rho2 = modRes2[0]
+    # print("rho2: {}".format(rho2))
+    rho2 = rho2 * Polynomial([y * mod1], rho2.N)
+    # print("rho2-2: {}".format(rho1))
+
+    return [(rho1 + rho2) % prod, None, prod]
+
 
 
 
@@ -463,15 +637,16 @@ def EEA(p: int, a: Polynomial, b: Polynomial) -> (Polynomial, Polynomial, Polyno
     :param b: Polynomial object representing polynomial b
     :return: Polynomials u,v and d such that a × u + b × v = d
     """
+    N = a.N
     if not (isinstance(a, Polynomial) and isinstance(b, Polynomial)):       # if a or b is not a polynomial raise an error
         raise PolynomialError("Both a and b need to be polynomial objects")
 
     if b._coef.count(b[0]) == len(b) and b[0] == 0:                         # a
-        return Polynomial([1]), Polynomial([0]), a                          # a
+        return Polynomial([1], N), Polynomial([0], N), a                          # a
 
-    u = Polynomial([1])                                                     # b
+    u = Polynomial([1], N + 1)                                                     # b
     d = a % p                                                               # c
-    v1 = Polynomial([0])                                                    # d
+    v1 = Polynomial([0], N + 1)                                                    # d
     v3 = b % p                                                              # e
     while not (v3[0] == 0 and v3._coef.count(v3[0]) == len(v3)):            # f
         q, t3 = d.poly_div(p, v3)                                               # 1
@@ -480,23 +655,131 @@ def EEA(p: int, a: Polynomial, b: Polynomial) -> (Polynomial, Polynomial, Polyno
         d = v3                                                                  # 4
         v1 = t1                                                                 # 5
         v3 = t3                                                                 # 6
-    v, vr = ((a*u % p) % p).poly_div(p, b)                                  # g
+    v, vr = ((a*u) % p).poly_div(p, b)                                      # g
     return u, v, d                                                          # h
+
+
+def sylvester_resultant(p: Polynomial, q: Polynomial) -> int:
+    """
+    This function will calculate the resultant of 2 polynomials
+    by calculating the determinant of the sylvestermatrix formed by
+    these 2 polynomials
+    :return: resultant of p and q
+    """
+    from numpy.linalg import det
+    pRev = list(reversed(p[:]))
+    while pRev[0] == 0:
+        pRev = pRev[1:]
+    qRev = list(reversed(q[:]))
+    while qRev[0] == 0:
+        qRev = qRev[1:]
+    m = len(pRev) - 1
+    n = len(qRev) - 1
+    syl = [[0] * (m+n)] * (m+n)
+    for row in range(n):
+        syl[row] = ([0] * row) + pRev + ([0] * (n-1-row))
+    for row in range(m):
+        syl[row+n] = ([0] * row) + qRev + ([0] * (m-1-row))
+    return int(det(syl))
+
+###
+# Prime numbers > 4500 for resultant computation. Starting them below ~4400 causes incorrect results occasionally.
+# Fortunately, 4500 is about the optimum number for performance.
+# This array contains enough prime numbers so primes never have to be computed on-line for any Signing Parameter standard
 #
+# I copied this list from the NTRUJava implementation, which can be found at: https://github.com/tbuktu/ntru
+###
+PRIMES = [
+        4507, 4513, 4517, 4519, 4523, 4547, 4549, 4561, 4567, 4583,
+        4591, 4597, 4603, 4621, 4637, 4639, 4643, 4649, 4651, 4657,
+        4663, 4673, 4679, 4691, 4703, 4721, 4723, 4729, 4733, 4751,
+        4759, 4783, 4787, 4789, 4793, 4799, 4801, 4813, 4817, 4831,
+        4861, 4871, 4877, 4889, 4903, 4909, 4919, 4931, 4933, 4937,
+        4943, 4951, 4957, 4967, 4969, 4973, 4987, 4993, 4999, 5003,
+        5009, 5011, 5021, 5023, 5039, 5051, 5059, 5077, 5081, 5087,
+        5099, 5101, 5107, 5113, 5119, 5147, 5153, 5167, 5171, 5179,
+        5189, 5197, 5209, 5227, 5231, 5233, 5237, 5261, 5273, 5279,
+        5281, 5297, 5303, 5309, 5323, 5333, 5347, 5351, 5381, 5387,
+        5393, 5399, 5407, 5413, 5417, 5419, 5431, 5437, 5441, 5443,
+        5449, 5471, 5477, 5479, 5483, 5501, 5503, 5507, 5519, 5521,
+        5527, 5531, 5557, 5563, 5569, 5573, 5581, 5591, 5623, 5639,
+        5641, 5647, 5651, 5653, 5657, 5659, 5669, 5683, 5689, 5693,
+        5701, 5711, 5717, 5737, 5741, 5743, 5749, 5779, 5783, 5791,
+        5801, 5807, 5813, 5821, 5827, 5839, 5843, 5849, 5851, 5857,
+        5861, 5867, 5869, 5879, 5881, 5897, 5903, 5923, 5927, 5939,
+        5953, 5981, 5987, 6007, 6011, 6029, 6037, 6043, 6047, 6053,
+        6067, 6073, 6079, 6089, 6091, 6101, 6113, 6121, 6131, 6133,
+        6143, 6151, 6163, 6173, 6197, 6199, 6203, 6211, 6217, 6221,
+        6229, 6247, 6257, 6263, 6269, 6271, 6277, 6287, 6299, 6301,
+        6311, 6317, 6323, 6329, 6337, 6343, 6353, 6359, 6361, 6367,
+        6373, 6379, 6389, 6397, 6421, 6427, 6449, 6451, 6469, 6473,
+        6481, 6491, 6521, 6529, 6547, 6551, 6553, 6563, 6569, 6571,
+        6577, 6581, 6599, 6607, 6619, 6637, 6653, 6659, 6661, 6673,
+        6679, 6689, 6691, 6701, 6703, 6709, 6719, 6733, 6737, 6761,
+        6763, 6779, 6781, 6791, 6793, 6803, 6823, 6827, 6829, 6833,
+        6841, 6857, 6863, 6869, 6871, 6883, 6899, 6907, 6911, 6917,
+        6947, 6949, 6959, 6961, 6967, 6971, 6977, 6983, 6991, 6997,
+        7001, 7013, 7019, 7027, 7039, 7043, 7057, 7069, 7079, 7103,
+        7109, 7121, 7127, 7129, 7151, 7159, 7177, 7187, 7193, 7207,
+        7211, 7213, 7219, 7229, 7237, 7243, 7247, 7253, 7283, 7297,
+        7307, 7309, 7321, 7331, 7333, 7349, 7351, 7369, 7393, 7411,
+        7417, 7433, 7451, 7457, 7459, 7477, 7481, 7487, 7489, 7499,
+        7507, 7517, 7523, 7529, 7537, 7541, 7547, 7549, 7559, 7561,
+        7573, 7577, 7583, 7589, 7591, 7603, 7607, 7621, 7639, 7643,
+        7649, 7669, 7673, 7681, 7687, 7691, 7699, 7703, 7717, 7723,
+        7727, 7741, 7753, 7757, 7759, 7789, 7793, 7817, 7823, 7829,
+        7841, 7853, 7867, 7873, 7877, 7879, 7883, 7901, 7907, 7919,
+        7927, 7933, 7937, 7949, 7951, 7963, 7993, 8009, 8011, 8017,
+        8039, 8053, 8059, 8069, 8081, 8087, 8089, 8093, 8101, 8111,
+        8117, 8123, 8147, 8161, 8167, 8171, 8179, 8191, 8209, 8219,
+        8221, 8231, 8233, 8237, 8243, 8263, 8269, 8273, 8287, 8291,
+        8293, 8297, 8311, 8317, 8329, 8353, 8363, 8369, 8377, 8387,
+        8389, 8419, 8423, 8429, 8431, 8443, 8447, 8461, 8467, 8501,
+        8513, 8521, 8527, 8537, 8539, 8543, 8563, 8573, 8581, 8597,
+        8599, 8609, 8623, 8627, 8629, 8641, 8647, 8663, 8669, 8677,
+        8681, 8689, 8693, 8699, 8707, 8713, 8719, 8731, 8737, 8741,
+        8747, 8753, 8761, 8779, 8783, 8803, 8807, 8819, 8821, 8831,
+        8837, 8839, 8849, 8861, 8863, 8867, 8887, 8893, 8923, 8929,
+        8933, 8941, 8951, 8963, 8969, 8971, 8999, 9001, 9007, 9011,
+        9013, 9029, 9041, 9043, 9049, 9059, 9067, 9091, 9103, 9109,
+        9127, 9133, 9137, 9151, 9157, 9161, 9173, 9181, 9187, 9199,
+        9203, 9209, 9221, 9227, 9239, 9241, 9257, 9277, 9281, 9283,
+        9293, 9311, 9319, 9323, 9337, 9341, 9343, 9349, 9371, 9377,
+        9391, 9397, 9403, 9413, 9419, 9421, 9431, 9433, 9437, 9439,
+        9461, 9463, 9467, 9473, 9479, 9491, 9497, 9511, 9521, 9533,
+        9539, 9547, 9551, 9587, 9601, 9613, 9619, 9623, 9629, 9631,
+        9643, 9649, 9661, 9677, 9679, 9689, 9697, 9719, 9721, 9733,
+        9739, 9743, 9749, 9767, 9769, 9781, 9787, 9791, 9803, 9811,
+        9817, 9829, 9833, 9839, 9851, 9857, 9859, 9871, 9883, 9887,
+        9901, 9907, 9923, 9929, 9931, 9941, 9949, 9967, 9973]
+
 #
+# a = Polynomial([4, 2, 2, 1], 4)
+# b = Polynomial([-1, 0, 0, 0, 1], 5)
+# print(sylvester_resultant(a, b))
+# print(a.resultant_p(503))
+# f, g, d = EEA(503, a, b)
+# print(f)
+# print(g)
+# print(d)
 # if __name__ == "__main__":
-#     a = Polynomial([1, 1, 0, 2, 1, 0, 2])
-#     # b = Polynomial([1, 0, 0, 2])
-#     # print(a+b)
-#     f = Polynomial([-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1])
-#     g = Polynomial([-1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1])
-#     fp = Polynomial([1, 2, 0, 2, 2, 1, 0, 2, 1, 2])
-#     fq = Polynomial([5, 9, 6, 16, 4, 15, 16, 22, 20, 18, 30])
-#     # print(f)
-#     # print(fq)
-#     # print(f*fq % Parameters.q)
-#     # print(f.inverse(Parameters.p))
-#     # print(fp)
+# a = Polynomial([1, 1, 0, 2, 1, 0, 2], 11)
+# b = Polynomial([0, 0, 0, 2], 11)
+# print(a.poly_div(3, b))
+# # print(a+b)
+f = Polynomial([-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1], 11)
+g = Polynomial([-1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1], 11)
+fp = Polynomial([1, 2, 0, 2, 2, 1, 0, 2, 1, 2], 11)
+fq = Polynomial([5, 9, 6, 16, 4, 15, 16, 22, 20, 18, 30], 11)
+# print(f)
+# print(fq)
+# print(f*fq % 32)
+# print(f.inverse(3))
+# a, b, c = EEA(3, f, fp)
+# print(a)
+# print(b)
+# print(c)
+# print(fp)
 #     # print("-------------------------------------")
 #     # print(f.inverse_pow_2(2, 5))
 #     # print(fq)
