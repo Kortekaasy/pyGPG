@@ -43,3 +43,13 @@ def os2ip(os: bytearray, byteorder='big') -> int:
     :return: integer constructed from the bytearray
     """
     return int.from_bytes(os, byteorder=byteorder)
+
+
+def product(numbers: list) -> int:
+    """
+    This function will take the product of all numbers and return
+    that value
+    """
+    from functools import reduce
+    import operator
+    return reduce(operator.mul, numbers, 1)
