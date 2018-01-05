@@ -7,7 +7,7 @@ The pygpg.exe executable is build for windows environments, and the pygpg execut
 for posix environments. There are three basic commands available, which you can find beneath:
 ---
 The following command will generate a new keypair. During generation you will be asked to specifiy
-a security level and a password to protect your private key
+a security level and a password to protect your private key.
 ```
 $ ./pygpg -g [key id]
 ```
