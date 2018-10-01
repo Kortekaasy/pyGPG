@@ -220,7 +220,7 @@ class NTRUCrypt:
             # print("F: {}".format(F))
             # print("Parameters.p: {}".format(Parameters.p))
             # print("p*F: {}".format(Polynomial([Parameters.p], 1) * F))
-            f = Polynomial(np.array([1]), N) + (F * Polynomial(np.array([Parameters.p]), 1))       # e
+            f = Polynomial(np.array([1]), N) + (F * Polynomial(np.array([Parameters.p]), N))       # e
             # print("f: {}".format(f))
             f %= Parameters.q
             # print("f: {}".format(f))
@@ -441,10 +441,10 @@ ees1499ep1
 if __name__ == "__main__":
     import sys
     sys.setrecursionlimit(10000)
-    crypt = NTRUCrypt("ees659ep1")
+    crypt = NTRUCrypt("ees1499ep1")
     t0 = time.clock()
-    # kp = crypt.keygen()
-    kp = KeyPair.load('819218ce.key', "My great pass")
+    kp = crypt.keygen()
+    # kp = KeyPair.load('819218ce.key', "My great pass")
     print("f: {}, len: {}".format(kp.f, len(kp.f)))
     print("fp: {}, len: {}".format(kp.fp, len(kp.fp)))
     print("fq: {}, len: {}".format(kp.fq, len(kp.fq)))

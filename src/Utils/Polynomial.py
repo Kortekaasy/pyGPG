@@ -34,11 +34,7 @@ class Polynomial:
         """
         self.N = N
 
-        if N-len(coef) < 0:
-            print(N-len(coef))
-            print("oeps")
-
-        self._coef = np.concatenate((coef,  np.zeros(N - len(coef))))
+        self._coef = np.concatenate((coef,  np.zeros(N - len(coef)))).astype(int)
 
     def __str__(self):
         """
@@ -420,7 +416,6 @@ class Polynomial:
             if f[0] == 1 and (f._coef[1:] == 0).all():
                 # b._coef = [0] * k + b._coef
                 k %= N
-                print("ping")
                 kpol = Polynomial(np.concatenate((np.zeros(N-k), np.array([1]))), N)  # X^N-k
                 return kpol * b
             if degree(f) < degree(g):
