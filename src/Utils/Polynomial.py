@@ -259,7 +259,7 @@ class Polynomial:
         """
         coefs = [x % q for x in self._coef]  # a 1
         size = math.ceil(math.log2(q))
-        bits = ["{0:0{1}b}".format(x, size) for x in coefs]
+        bits = ["{0:0{1}b}".format(int(x), size) for x in coefs]
         return ''.join(bits)
 
     def toOSP(self, q: int) -> str:
@@ -455,7 +455,7 @@ class Polynomial:
     def center0(self, q: int):
         if q == 2048:
             for i in range(len(self)):
-                c = self[i] & 2047
+                c = int(self[i]) & 2047
                 if c >= 1024:
                     c -= 2048
                 self[i] = c

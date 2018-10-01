@@ -443,7 +443,7 @@ if __name__ == "__main__":
     sys.setrecursionlimit(10000)
     crypt = NTRUCrypt("ees659ep1")
     t0 = time.clock()
-    kp = crypt.keygen()
+    # kp = crypt.keygen()
     kp = KeyPair.load('819218ce.key', "My great pass")
     print("f: {}, len: {}".format(kp.f, len(kp.f)))
     print("fp: {}, len: {}".format(kp.fp, len(kp.fp)))
