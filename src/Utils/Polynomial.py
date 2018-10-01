@@ -1,6 +1,8 @@
 import math
 from copy import deepcopy
 from typing import List
+import numpy as np
+from numpy import asarray
 
 from src.NTRUCrypt.EncryptionParameters import Parameters
 from src.Utils.Arithmetic import *
@@ -24,7 +26,7 @@ class Polynomial:
     This class will be used to represent polynomials.
     The coefficients of these polynomials will be represented by an integer list
     """
-    def __init__(self, coef: List[int], N: int):
+    def __init__(self, coef: np.ndarray, N: int):
         """
         This constructor will construct an Polynomial object with len(coef) coefficients.
         :param coef: int list containing the coefficients of the polynomial
@@ -32,7 +34,7 @@ class Polynomial:
         """
         self.N = N
 
-        self._coef = coef + (N - len(coef)) * [0]
+        self._coef = np.concatenate((coef,  np.zeros(N - len(coef))))
 
     def __str__(self):
         """
@@ -52,17 +54,17 @@ class Polynomial:
         :return: A new polynomial where the coefficients of self and other are added together
         """
         if isinstance(other, int):
-            other = Polynomial([other])
+            other = Polynomial(np.array([other]), self.N)
         elif not isinstance(other, Polynomial):                                           # if other is not a polynomials throw an error
             raise PolynomialError("You cannot add a Polynomial and a {} together!".format(other.__class__.__name__))
-        if len(self) >= len(other):
-            p1, p2 = self, other
+        # make sure the length of both coefficient arrays are equal, by appending zeroes
+        if len(self) > len(other):
+            p1, p2 = self._coef, np.concatenate((other._coef, np.zeros(len(self._coef) - len(other._coef))))
+        elif len(other) > len(self):
+            p1, p2 = other._coef, np.concatenate((self._coef, np.zeros(len(other._coef) - len(self._coef))))
         else:
-            p1, p2 = other, self
-        new_coef = [self[i] + other[i] for i in range(len(p2))]                         # add the respective coefficients together and store the result in a new list
-        if len(p1) > len(p2):
-            new_coef += p1[(len(p2)-len(p1)):]
-        return Polynomial(new_coef, len(p1))                                            # return a new Polynomial object with the added coefficients
+            p1, p2 = self._coef, other._coef
+        return Polynomial(p1 + p2, len(p1))                                            # return a new Polynomial object with the added coefficients
 
     def __iadd__(self, other: "Polynomial"):
         """
@@ -71,17 +73,18 @@ class Polynomial:
         :param other: Polynomial to add to self
         """
         if isinstance(other, int):
-            other = Polynomial([other])
+            other = Polynomial(np.array([other]), 1)
         elif not isinstance(other, Polynomial):                                           # if other is not a polynomials throw an error
             raise PolynomialError("You cannot add a Polynomial and a {} together!".format(other.__class__.__name__))
-        if len(self) >= len(other):
-            p1, p2 = self, other
+        # make sure the length of both coefficient arrays are equal, by appending zeroes
+        if len(self) > len(other):
+            p1, p2 = self._coef, np.concatenate((other._coef, np.zeros(len(self._coef) - len(other._coef))))
+        elif len(other) > len(self):
+            p1, p2 = other._coef, np.concatenate((self._coef, np.zeros(len(other._coef) - len(self._coef))))
         else:
-            p1, p2 = other, self
-        new_coef = [self[i] + other[i] for i in range(len(p2))]                         # add the respective coefficients together and store the result in a new list
-        if len(p1) > len(p2):
-            new_coef += p1[(len(p2)-len(p1)):]
-        self._coef = new_coef                                                           # replace the coefficients of self with the newly calculated coefficients
+            p1, p2 = self._coef, other._coef
+        # replace own coefficient array with the updated array
+        self._coef = p1 + p2
 
     def __sub__(self, other: "Polynomial") -> "Polynomial":
         """
@@ -91,17 +94,17 @@ class Polynomial:
                 :return: A new polynomial where the coefficients of self and other are subtracted from each other
                 """
         if isinstance(other, int):
-            other = Polynomial([other])
-        elif not isinstance(other, Polynomial):  # if other is not a polynomials throw an error
+            other = Polynomial(np.array([other]), self.N)
+        elif not isinstance(other, Polynomial):                                           # if other is not a polynomials throw an error
             raise PolynomialError("You cannot add a Polynomial and a {} together!".format(other.__class__.__name__))
-        if len(self) >= len(other):
-            p1, p2 = self, other
+        # make sure the length of both coefficient arrays are equal, by appending zeroes
+        if len(self) > len(other):
+            p1, p2 = self._coef, np.concatenate((other._coef, np.zeros(len(self._coef) - len(other._coef))))
+        elif len(other) > len(self):
+            p1, p2 = other._coef, np.concatenate((self._coef, np.zeros(len(other._coef) - len(self._coef))))
         else:
-            p1, p2 = other, self
-        new_coef = [self[i] - other[i] for i in range(len(p2))]                         # subtract the respective coefficients from each other and store the result in a new list
-        if len(p1) > len(p2):
-            new_coef += [-i for i in p1[(len(p2)-len(p1)):]]
-        return Polynomial(new_coef, len(p1))
+            p1, p2 = self._coef, other._coef
+        return Polynomial(p1 - p2, len(p1))                                            # return a new Polynomial object with the subbed coefficients
 
     def __isub__(self, other: "Polynomial"):
         """
@@ -110,18 +113,18 @@ class Polynomial:
         :param other: Polynomial to subtract from self
         """
         if isinstance(other, int):
-            other = Polynomial([other])
-        elif not isinstance(other, Polynomial):  # if other is not a polynomials throw an error
+            other = Polynomial(np.array([other]), 1)
+        elif not isinstance(other, Polynomial):                                           # if other is not a polynomials throw an error
             raise PolynomialError("You cannot add a Polynomial and a {} together!".format(other.__class__.__name__))
-        if len(self) >= len(other):
-            p1, p2 = self, other
+        # make sure the length of both coefficient arrays are equal, by appending zeroes
+        if len(self) > len(other):
+            p1, p2 = self._coef, np.concatenate((other._coef, np.zeros(len(self._coef) - len(other._coef))))
+        elif len(other) > len(self):
+            p1, p2 = other._coef, np.concatenate((self._coef, np.zeros(len(other._coef) - len(self._coef))))
         else:
-            p1, p2 = other, self
-        new_coef = [self[i] - other[i] for i in range(
-            len(p2))]  # subtract the respective coefficients from each other and store the result in a new list
-        if len(p1) > len(p2):
-            new_coef += p1[(len(p2) - len(p1)):]
-        self._coef = new_coef
+            p1, p2 = self._coef, other._coef
+        # replace own coefficient array with the updated array
+        self._coef = p1 - p2
 
     def __mul__(self, other: "Polynomial") -> "Polynomial":
         """
@@ -133,14 +136,19 @@ class Polynomial:
         N = self.N
 
         if isinstance(other, int):
-            other = Polynomial([other])
+            other = Polynomial(np.array([other]),1)
         elif not isinstance(other, Polynomial):                                           # if other is not a polynomials throw an error
             raise PolynomialError("You cannot multiply a Polynomial and a {} together!".format(other.__class__.__name__))
 
-        H = [0] * N                                                 # initialize the new coefficients list with zeroes
-        for i, a in enumerate(self):
-            for j, b in enumerate(other):
-                H[(i + j) % N] += a * b                             # do the summation as specified in the IEEE document
+        H = np.zeros(N)                                             # initialize the new coefficients list with zeroes
+        p = self._coef
+        q = other._coef
+        for a in p:
+            H += a * q
+            q = np.roll(q, 1)
+        # for i, a in enumerate(self):
+        #     for j, b in enumerate(other):
+        #         H[(i + j) % N] += a * b                             # do the summation as specified in the IEEE document
         return Polynomial(H, N)
 
     def __imul__(self, other: "Polynomial"):
@@ -152,14 +160,19 @@ class Polynomial:
         N = self.N
 
         if isinstance(other, int):
-            other = Polynomial([other])
+            other = Polynomial(np.array([other]),1)
         elif not isinstance(other, Polynomial):                                           # if other is not a polynomials throw an error
             raise PolynomialError("You cannot multiply a Polynomial and a {} together!".format(other.__class__.__name__))
 
-        H = [0 for i in range(N)]  # initialize the new coefficients list with zeroes
-        for i in range(len(self)):
-            for j in range(len(other)):
-                H[(i + j) % N] += self[i] * other[j]              # do the summation as specified in the IEEE document
+        H = np.zeros(N)  # initialize the new coefficients list with zeroes
+        p = self._coef
+        q = other._coef
+        for a in p:
+            H += a * q
+            q = np.roll(q, 1)
+        # for i in range(len(self)):
+        #     for j in range(len(other)):
+        #         H[(i + j) % N] += self[i] * other[j]              # do the summation as specified in the IEEE document
         self._coef = H                                            # replace the coefficients of self with the newly calculated coefficients
 
     def __mod__(self, other: int) -> "Polynomial":
@@ -171,7 +184,7 @@ class Polynomial:
         """
         if not isinstance(other, int):                          # if other is not an integer, throw an error
             raise PolynomialError("You cannot reduce the coefficients of a Polynomial by a {}".format(other.__class__.__name__))
-        return Polynomial([i % other for i in self._coef], self.N)      # return a new Polynomial object with all the coefficients of self `mod` other
+        return Polynomial(self._coef % other, self.N)      # return a new Polynomial object with all the coefficients of self `mod` other
 
     def __len__(self) -> int:
         """
@@ -277,7 +290,7 @@ class Polynomial:
         size = math.ceil(math.log2(q))                  # check how many bits represent one coefficient
         for i in range(len(B) // size):
             coefs.append(int(B[size*i:size*(i+1)], 2))  # convert the bits to integers and add them to the coefficient list
-        return Polynomial(coefs, N)                     # return a polynomial with the coefficients from the bitstring
+        return Polynomial(np.array(coefs), N)                     # return a polynomial with the coefficients from the bitstring
 
     @staticmethod
     def fromOSP(O: bytearray, N: int, q: int):
@@ -318,7 +331,7 @@ class Polynomial:
         print("b: {}".format(b))
 
         r = self % p                                                # a
-        q = Polynomial([0], N)            # a
+        q = Polynomial(np.zeros(N), N)            # a
         u = mul_inv(b[N], p)                                        # b
         if degree(r) >= N and u is None:
             raise PolynomialError("Cannot calculate inverse of b[N]")
@@ -329,7 +342,7 @@ class Polynomial:
             print("d-N  : {}".format(d-N))
             print("u    : {}".format(u))
             print("r[d] : {}".format(r[d]))
-            v = Polynomial([0] * (d-N) + [u * r[d]], self.N)        # 2
+            v = Polynomial(np.concatenate((np.zeros(d-N), np.repeat(r[d], u))), self.N)        # 2
             r = (r - v * b) % p                                         # 3
             q = (q + v) % p                                             # 4
             if d == 0:
@@ -348,21 +361,21 @@ class Polynomial:
         false if the inverse does not exist
         """
         N = self.N
-        u, v, d = EEA(p, self, Polynomial([-1] + [0 for i in range(N-1)] + [1], N+1))    # a
+        u, v, d = EEA(p, self, Polynomial(np.concatenate((np.array([-1]), np.zeros(N-1), np.array([1]))), N+1))    # a
         if degree(d) == 0:                                                               # b
             d1 = mul_inv(d[0], p)                                                        # c
-            return Polynomial([d1], N) * u                                                  # c
+            return Polynomial(np.array([d1]), N) * u                                                  # c
         else:                                                                            # d
             return False                                                                 # d
 
     def inverse_3(self):
         N = self.N
         k = 0
-        b = Polynomial([1])
-        c = Polynomial([0])
+        b = Polynomial(np.array([1]), N)
+        c = Polynomial(np.array([0]), N)
         f = deepcopy(self) % 3
         f._coef += [0]
-        g = Polynomial([-1] + ([0] * (N - 1)) + [1])
+        g = Polynomial(np.concatenate((np.array([-1]), np.zeros(N-1), np.array([1]))), N+1)
 
         while True:
             f.center0(3)
@@ -375,7 +388,7 @@ class Polynomial:
                     return False
             if abs(f[0]) == 1 and f[1:] == ([0] * (len(f) - 1)):
                 k %= N
-                kpol = Polynomial(([0] * (N - k)) + [f[0]])  # X^N-k
+                kpol = Polynomial(np.concatenate((np.zeros(N-k), np.array([f[0]]))), N)  # X^N-k
                 return kpol * b
             if degree(f) < degree(g):
                 f,g = g,f
@@ -390,20 +403,20 @@ class Polynomial:
     def inverse_2(self):
         N = self.N
         k = 0
-        b = Polynomial([1], N + 1)
-        c = Polynomial([0], N + 1)
+        b = Polynomial(np.array([1]), N)
+        c = Polynomial(np.array([0]), N)
         f = deepcopy(self) % 2
-        g = Polynomial([-1] + ([0] * (self.N-1)) + [1], N + 1)
+        g = Polynomial(np.concatenate((np.array([-1]), np.zeros(N-1), np.array([1]))), N+1)
 
         while True:
             while f[0] == 0:
                 f._coef = f._coef[1:]
                 c._coef = [0] + c._coef
                 k += 1
-            if f[0] == 1 and f[1:] == ([0] * (len(f) - 1)):
+            if f[0] == 1 and (f[1:] == 0).all():
                 # b._coef = [0] * k + b._coef
                 k %= N
-                kpol = Polynomial(([0] * (N-k)) + [1], N)  # X^N-k
+                kpol = Polynomial(np.concatenate((np.zeros(N-k), np.array([1]))), N)  # X^N-k
                 return kpol * b
             if degree(f) < degree(g):
                 f, g = g, f
@@ -431,7 +444,7 @@ class Polynomial:
         pe = p**e                                       # 2
         while q < pe:                                   # 2
             q *= q                                      # 3
-            b = (b * (Polynomial([2], self.N) - self*b)) % q    # 4
+            b = (b * (Polynomial(np.array([2]), self.N) - self*b)) % q    # 4
         return b % pe                                   # 5
 
     def center0(self, q: int):
@@ -641,14 +654,14 @@ def EEA(p: int, a: Polynomial, b: Polynomial) -> (Polynomial, Polynomial, Polyno
     if not (isinstance(a, Polynomial) and isinstance(b, Polynomial)):       # if a or b is not a polynomial raise an error
         raise PolynomialError("Both a and b need to be polynomial objects")
 
-    if b._coef.count(b[0]) == len(b) and b[0] == 0:                         # a
-        return Polynomial([1], N), Polynomial([0], N), a                          # a
+    if (b._coef == 0).all():                         # a
+        return Polynomial(np.array([1]), N), Polynomial(np.array([0]), N), a                          # a
 
-    u = Polynomial([1], N + 1)                                                     # b
+    u = Polynomial(np.array([1]), N + 1)                                                     # b
     d = a % p                                                               # c
-    v1 = Polynomial([0], N + 1)                                                    # d
+    v1 = Polynomial(np.array([0]), N + 1)                                                    # d
     v3 = b % p                                                              # e
-    while not (v3[0] == 0 and v3._coef.count(v3[0]) == len(v3)):            # f
+    while not (v3._coef == 0).all():            # f
         q, t3 = d.poly_div(p, v3)                                               # 1
         t1 = (u - q * v1) % p                                                   # 2
         u = v1                                                                  # 3
@@ -767,10 +780,10 @@ PRIMES = [
 # b = Polynomial([0, 0, 0, 2], 11)
 # print(a.poly_div(3, b))
 # # print(a+b)
-f = Polynomial([-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1], 11)
-g = Polynomial([-1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1], 11)
-fp = Polynomial([1, 2, 0, 2, 2, 1, 0, 2, 1, 2], 11)
-fq = Polynomial([5, 9, 6, 16, 4, 15, 16, 22, 20, 18, 30], 11)
+# f = Polynomial([-1, 1, 1, 0, -1, 0, 1, 0, 0, 1, -1], 11)
+# g = Polynomial([-1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1], 11)
+# fp = Polynomial([1, 2, 0, 2, 2, 1, 0, 2, 1, 2], 11)
+# fq = Polynomial([5, 9, 6, 16, 4, 15, 16, 22, 20, 18, 30], 11)
 # print(f)
 # print(fq)
 # print(f*fq % 32)
