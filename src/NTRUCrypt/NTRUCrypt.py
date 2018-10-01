@@ -172,7 +172,7 @@ class NTRUCrypt:
 
         igf = IGF(seed, False)                                  # a
 
-        r = Polynomial([0], Parameters.N)                       # b
+        r = Polynomial(np.array([0]), Parameters.N)                       # b
         t = 0                                                   # c
         while t < Parameters.dr:                                # d
             i = igf.generateIndex()                                 # 1
@@ -196,14 +196,14 @@ class NTRUCrypt:
         """
 
         N = Parameters.N
-        f = Polynomial([0], N)
-        g = Polynomial([0], N)                                     # g
+        f = Polynomial(np.array([0]), N)
+        g = Polynomial(np.array([0]), N)                                     # g
         f_invertible = False
         g_invertible = False
 
         # print("generating f")
         while not f_invertible:
-            F = Polynomial([0], N)                                  # a
+            F = Polynomial(np.array([0]), N)                                  # a
             t = 0                                                   # b
             while t < Parameters.df:                                # c
                 i = self._getRand_(N)                                   # 1
@@ -220,12 +220,12 @@ class NTRUCrypt:
             # print("F: {}".format(F))
             # print("Parameters.p: {}".format(Parameters.p))
             # print("p*F: {}".format(Polynomial([Parameters.p], 1) * F))
-            f = Polynomial([1], N) + (F * Polynomial([Parameters.p], 1))       # e
+            f = Polynomial(np.array([1]), N) + (F * Polynomial(np.array([Parameters.p]), 1))       # e
             # print("f: {}".format(f))
             f %= Parameters.q
             # print("f: {}".format(f))
             f_inv_2 = f.inverse_pow_2(2, int(math.log2(Parameters.q)))    # f
-            f_inv_3 = Polynomial([1], N)
+            f_inv_3 = Polynomial(np.array([1]), N)
             f_invertible = isinstance(f_inv_2, Polynomial)            # f
             # print("f invertible: {}".format(f_invertible))
 
@@ -246,7 +246,7 @@ class NTRUCrypt:
             g_inv = g.inverse_pow_2(2, int(math.log2(Parameters.q)))    # l
             g_invertible = isinstance(g_inv, Polynomial)            # l
             # print("g invertible: {}".format(g_invertible))
-        h = f_inv_2 * g * Polynomial([Parameters.p], 1)                  # m
+        h = f_inv_2 * g * Polynomial(np.array([Parameters.p]), 1)                  # m
         h %= Parameters.q
         kp = KeyPair(f, f_inv_3, f_inv_2, g, h)
         return kp
@@ -287,7 +287,7 @@ class NTRUCrypt:
             Mtrin = []                                                          # h
             for i in range(len(Mbin) // 3):                                     # h
                 Mtrin.extend(self.conversiontableE[int(Mbin[i * 3:(i + 1) * 3], 2)])   # h
-            Mtrin = Polynomial(Mtrin, Parameters.N)                             # h
+            Mtrin = Polynomial(np.array(Mtrin), Parameters.N)                             # h
             bh = pubkey.toBSP(Parameters.q)                                     # i
             bhTrunc = bh[:Parameters.pkLen]                                     # i
             hTrunc = []                                                         # i
@@ -327,7 +327,7 @@ class NTRUCrypt:
         Mtrin = []
         for i in range(len(mBits) // 3):
             Mtrin.extend(self.conversiontableE[int(mBits[i * 3:(i + 1) * 3], 2)])
-        Mtrin = Polynomial(Mtrin)
+        Mtrin = Polynomial(np.array(Mtrin))
 
 
         b = bytearray()
