@@ -433,15 +433,15 @@ class NTRUCrypt:
         return secrets.randbelow(max)
 
 """
-ees659ep1
-ees791ep1
-ees1087ep1
-ees1499ep1
+ees659ep1   : 9e3640a3.key
+ees791ep1   : 26027231.key
+ees1087ep1  : 7d8f0246.key
+ees1499ep1  : 6db6f3ed.key
 """
 if __name__ == "__main__":
     import sys
     sys.setrecursionlimit(10000)
-    crypt = NTRUCrypt("ees1499ep1")
+    crypt = NTRUCrypt("ees659ep1")
     t0 = time.clock()
     kp = crypt.keygen()
     # kp = KeyPair.load('819218ce.key', "My great pass")
@@ -450,7 +450,7 @@ if __name__ == "__main__":
     print("fq: {}, len: {}".format(kp.fq, len(kp.fq)))
     print("g: {}, len: {}".format(kp.g, len(kp.g)))
     print("h: {}, len: {}".format(kp.h, len(kp.h)))
-    # kp.save("My great pass", "./")
+    kp.save("My great pass", "./")
     t1 = time.clock()
     print("keygen in {} seconds".format(t1-t0))
 
